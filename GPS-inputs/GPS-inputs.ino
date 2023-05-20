@@ -9,12 +9,10 @@
 
 const int RXPin = 3; // Rx (Recive) pin on Arduino Uno connected to TX pin of GPS module
 const int TXPin = 4; // Tx (Transmit) pin on Arduino Uno connected to RX pin of GPS module
-float refLat, refLng;
+// float refLat, refLng;
 
 TinyGPSPlus gps; // Creates a TinyGPS+ object
-
-// Creates a class called 'ss' which has some methods. The ones used are .available() which checks how many bytes
-SoftwareSerial ss(RXPin, TXPin); 
+SoftwareSerial ss(RXPin, TXPin); // creates SoftwareSerial class
 
 void setup() {
   Serial.begin(9600);
@@ -31,22 +29,24 @@ void loop() {
     if (gps.encode(c)) {
       double lat = gps.location.lat();
       double lng = gps.location.lng();
-      float alt = gps.altitude.meters();
+      float speed = gps.speed.mps();
+      int heading = gps.course.deg();
+      int alt = gps.altitude.meters();
 
-      printGPSInfo (lat, lng, alt);  
+      printGPSInfo (lat, lng, speed, heading, alt);  
       
       // If the reference coordinates have not been set, use the first GPS reading as the reference
-      if (isnan(refLat) || isnan(refLng) ) {
-            refLat = lat;
-            refLng = lng;
-      }
+      // if (isnan(refLat) || isnan(refLng) ) {
+      //       refLat = lat;
+      //       refLng = lng;
+      // }
 
-      float course = gps.courseTo(refLat, refLng, lat, lng);
-      float distance = gps.distanceBetween(refLat, refLng, lat, lng);
+      // float course = gps.courseTo(refLat, refLng, lat, lng);
+      // float distance = gps.distanceBetween(refLat, refLng, lat, lng);
 
-      // calculating differences
-      float xDistance = distance * sin(course * PI / 180.0) ;
-      float yDistance = distance * cos (course * PI / 180.0);
+      // // calculating differences
+      // float xDistance = distance * sin(course * PI / 180.0) ;
+      // float yDistance = distance * cos (course * PI / 180.0);
 
 
       delay (500);
@@ -54,14 +54,18 @@ void loop() {
   }
 }
 
-void printGPSInfo (long lat, long lng, long alt) {
+void printGPSInfo (double lat, double lng, float speed, int heading, int alt) {
   Serial.print("Latitude: ");
-  Serial.println(lat);
+  Serial.println(lat, 6);
   Serial.print("Longitude: ");
-  Serial.println(lng);
-  Serial.println();
+  Serial.println(lng, 6);
+  Serial.print("Alt: ");
   Serial.println(alt);
-  Serial.println();
+  Serial.print("Speed: ");
+  Serial.println(speed);
+  Serial.print("heading: ");
+  Serial.println(heading);
   Serial.println();
 }
 
+ 
