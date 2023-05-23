@@ -1,12 +1,14 @@
 #include <Wire.h>
-const int MPU = 0x68;                 // MPU6050 I2C address
-const int PWR_MGMT_1 = 0x6B;          // Power management register
-const int RESET_VALUE = 0x00;         // Reset value for all registers on the MPU
-const int ACCEL_XOUT_H = 0x3B;        // Register of X-acceleration
-const int NUM_VALUES = 500;            // Number of values that are read from the IMU to initialize acceleration
-const int GRAVITY = 9.81;             // Acceleration due to gravity
-const int TESTING_DELAY  = 5;        // Time between reading initial acceleration data 
-const int PRINT_DELAY = 500;          // Time bewteen printing new delays for the sake of printing
+#include <math.h>
+
+const int MPU = 0x68;               // MPU6050 I2C address
+const int PWR_MGMT_1 = 0x6B;        // Power management register
+const int RESET_VALUE = 0x00;       // Reset value for all registers on the MPU
+const int ACCEL_XOUT_H = 0x3B;      // Register of X-acceleration
+const int NUM_VALUES = 500;         // Number of values that are read from the IMU to initialize acceleration
+const int GRAVITY = 9.81;           // Acceleration due to gravity
+const int TESTING_DELAY  = 5;       // Time between reading initial acceleration data 
+const int PRINT_DELAY = 500;        // Time bewteen printing new delays for the sake of printing
 
 float posX = 0.0;
 float posY = 0.0;
@@ -14,6 +16,9 @@ float posZ = 0.0;
 float speedX = 0;
 float speedY = 0;
 float speedZ = 0;
+float prevAccX = 0;
+float prevAccY = 0;
+float prevAccZ = 0;
 long prevTime = 0;
 long printTime = 0;
 
@@ -64,25 +69,33 @@ void loop() {
     float AccY = (Wire.read() << 8 | Wire.read()) / 16384.0 * GRAVITY - initialAccY;
     float AccZ = (Wire.read() << 8 | Wire.read()) / 16384.0 * GRAVITY - initialAccZ;
 
+
     long currentTime = millis();                          
     float delTime = (currentTime - prevTime) / 1000.0;  
+    
+    float jerkX = (AccX - prevAccX) / delTime;
+    float jerkY = (AccY - prevAccY) / delTime;
+    float jerkZ = (AccZ - prevAccZ) / delTime;
 
     // position data is updated by integrating instantaneous acceleration twice. This gives the formula del_x  = 1/2 * a * t^2 + v*t which is added to the position
-    speedX += AccX * delTime;
-    speedY += AccY * delTime;
-    speedZ += AccZ * delTime;
+    speedX += calcSpeed (jerkX, prevAccX, delTime);
+    speedY += calcSpeed (jerkY, prevAccY, delTime);
+    speedZ += calcSpeed (jerkZ, prevAccZ, delTime);
 
-    posX += 0.5 * AccX * delTime * delTime + speedX * delTime ;
-    posY += 0.5 * AccY * delTime * delTime + speedY * delTime ;
-    posZ += 0.5 * AccZ * delTime * delTime + speedZ * delTime ;
+    posX += calcPos (jerkX, prevAccX, speedX, delTime);
+    posY += calcPos (jerkY, prevAccY, speedY, delTime);
+    posZ += calcPos (jerkZ, prevAccZ, speedZ, delTime);
 
     prevTime = currentTime; 
+    prevAccX = AccX;
+    prevAccY = AccY;
+    prevAccZ = AccZ;    
 
     // PRINT STATEMENTS
     if (millis() - printTime > PRINT_DELAY) {
-      // printAcc (AccX, AccY, AccZ);
+      printAcc (AccX, AccY, AccZ);
       // printInitial (initialAccX, initialAccY, initialAccZ);
-      printPos (posX, posY, posZ);
+      // printPos (posX, posY, posZ);
 
       printTime = millis();
     }
@@ -121,5 +134,16 @@ void printPos (float posX, float poxY, float posZ) {
   Serial.print(posY);
   Serial.print(", ");
   Serial.println(posZ);
+}
+
+float calcSpeed (float jerk, float prevAcc, float delTime) {
+  return 0.5 * jerk * pow (delTime, 2) + prevAcc * delTime;
+}
+
+float calcPos (float jerk, float prevAcc, float speed, float delTime) {
+  float deltaPos = 1.0/6.0 * jerk * pow (delTime, 3) 
+                    + 0.5 * prevAcc * pow (delTime, 2) 
+                    + speed * delTime;
+  return deltaPos;
 }
 
