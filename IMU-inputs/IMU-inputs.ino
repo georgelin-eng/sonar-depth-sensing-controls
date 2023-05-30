@@ -8,7 +8,8 @@ const int ACCEL_XOUT_H = 0x3B;      // Register of X-acceleration
 const int NUM_VALUES = 500;         // Number of values that are read from the IMU to initialize acceleration
 const int GRAVITY = 9.81;           // Acceleration due to gravity
 const int TESTING_DELAY  = 5;       // Time between reading initial acceleration data 
-const int PRINT_DELAY = 500;        // Time bewteen printing new delays for the sake of printing
+const int PRINT_DELAY = 100;        // Time bewteen printing new delays for the sake of printing
+int SAMPLE_INTERVAL = 15;      		  // Time between reading initial acceleration data 
 
 float posX = 0.0;
 float posY = 0.0;
@@ -16,9 +17,6 @@ float posZ = 0.0;
 float speedX = 0;
 float speedY = 0;
 float speedZ = 0;
-float prevAccX = 0;
-float prevAccY = 0;
-float prevAccZ = 0;
 long prevTime = 0;
 long printTime = 0;
 
@@ -69,7 +67,6 @@ void loop() {
     float AccY = (Wire.read() << 8 | Wire.read()) / 16384.0 * GRAVITY - initialAccY;
     float AccZ = (Wire.read() << 8 | Wire.read()) / 16384.0 * GRAVITY - initialAccZ;
 
-
     long currentTime = millis();                          
     float delTime = (currentTime - prevTime) / 1000.0;  
     
@@ -100,7 +97,7 @@ void loop() {
       printTime = millis();
     }
 
-    delay (10);
+    delay (SAMPLE_INTERVAL);
   }
 
   Wire.endTransmission();
@@ -111,10 +108,10 @@ void loop() {
 void printAcc (float AccX, float AccY, float AccZ) {
   Serial.print("Acceleration (X, Y, Z): ");
   Serial.print(AccX);
-  Serial.print(" ");
-  Serial.print(AccY);
-  Serial.print(" ");
-  Serial.println(AccZ);
+  Serial.println(" ");
+  // Serial.print(AccY);
+  // Serial.print(" ");
+  // Serial.println(AccZ);
 }
 
 void printInitial (float initialAccX, float initialAccY, float initialAccZ) {
@@ -130,9 +127,9 @@ void printInitial (float initialAccX, float initialAccY, float initialAccZ) {
 void printPos (float posX, float poxY, float posZ) {
   Serial.print("Position (X, Y, Z): ");
   Serial.print(posX);
-  Serial.print(", ");
+  Serial.print(" ");
   Serial.print(posY);
-  Serial.print(", ");
+  Serial.print(" ");
   Serial.println(posZ);
 }
 
@@ -147,3 +144,9 @@ float calcPos (float jerk, float prevAcc, float speed, float delTime) {
   return deltaPos;
 }
 
+// Run some test lasting 3 seconds each for 5 trials testing which sample interval results in lowest positional error 
+int calcBestSampleInterval (void) {
+	int interval = 10;
+	
+	return interval;
+}
