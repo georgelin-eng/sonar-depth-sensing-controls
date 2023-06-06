@@ -10,4 +10,6 @@ extern float speedX = 0;
 extern float speedY = 0;
 extern float speedZ = 0;
 
+#define FILTERGAIN 0.04
+
 #endif

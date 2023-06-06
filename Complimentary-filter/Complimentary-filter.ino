@@ -8,8 +8,10 @@
 #include <TinyGPS++.h>           // Parses GPS NMEA strings for easy to use outputs
 #include <SoftwareSerial.h>      // Allows for TX and RX pins on the IC to be connected to digital pins on the Arduino
 #include <Adafruit_HMC5883_U.h>  // Use with the magnetometer. See http://adafruit.github.io/Adafruit_HMC5883_Unified/html/class_adafruit___h_m_c5883___unified.html#a7676ad9bfb73590ef1089e5829734c91
+// #include <SD.h>                // Current running into memory issues on the Arduino Uno since it doesn't have enough
+// #include <SPI.h>
+
 #include <math.h>
-// #include <MPU6050.h>
 
 #include "IMU_functions.h"  // functions that I'm using for the accelerometer
 #include "system_state_variables.h"   // variables which descibe system state
@@ -57,8 +59,8 @@ float initialAccX = 0;
 float initialAccY = 0;
 float initialAccZ = 0;
 
-float initialRoll = -1;
-float initialPitch = -1;
+float Roll = -1;                    // Sentinals used for checking values
+float Pitch = -1;
 float Accel_Roll;
 float Accel_Pitch;
 float Gyro_Roll = 0;
@@ -76,6 +78,10 @@ Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);
 TinyGPSPlus gps;
 SoftwareSerial ss(RXPin, TXPin);
 
+// SD card filetype object
+// File myFile;
+// int pinCS = 10; // Pin 10 on Arduino Uno
+
 // Sets up I2C communications on the I2C
 void setup() {
   Serial.begin(9600);
@@ -88,6 +94,15 @@ void setup() {
     while (1)
       ;
   }
+
+  // SD Card Initialization
+  // if (SD.begin()) {
+  //   Serial.println("SD card is ready to use.");
+  // }
+  // else {
+  //   Serial.println("SD card initialization failed");
+  //   return;
+  // }
 
   // SETUP IMU COMMUNICATIONS
   Wire.begin();                 // Enables use of the wire library
@@ -109,6 +124,7 @@ void setup() {
 }
 
 void loop() {
+
   // =======================  MAGNETOMETER ======================= //
   sensors_event_t event;          // creates a structure vairable, event, based off the sensors_event_t structure
   mag.getEvent(&event);           // Gets magnetic info
@@ -214,14 +230,16 @@ void loop() {
     fAccY[movingAverageCounter] = AccY;
     fAccZ[movingAverageCounter] = AccZ;
 
-    // fGyroX[movingAverageCounter] = GyroX;
-    // fGyroY[movingAverageCounter] = GyroY;
-    // fGyroZ[movingAverageCounter] = GyroZ;
+    fGyroX[movingAverageCounter] = GyroX;
+    fGyroY[movingAverageCounter] = GyroY;
+    fGyroZ[movingAverageCounter] = GyroZ;
 
     movingAverageCounter++;
+    Serial.println (movingAverageCounter);
   }
 
   else {
+
     float SMA_MagX = arrayAverage(fMagX, windowSize);
     float SMA_MagY = arrayAverage(fMagY, windowSize);
     float SMA_MagZ = arrayAverage(fMagZ, windowSize);
@@ -230,9 +248,9 @@ void loop() {
     float SMA_AccY = arrayAverage(fAccY, windowSize);
     float SMA_AccZ = arrayAverage(fAccZ, windowSize);
 
-    // float SMA_GyroX = arrayAverage(fGyroX, windowSize);
-    // float SMA_GyroY = arrayAverage(fGyroY, windowSize);
-    // float SMA_GyroZ = arrayAverage(fGyroZ, windowSize);
+    float SMA_GyroX = arrayAverage(fGyroX, windowSize);
+    float SMA_GyroY = arrayAverage(fGyroY, windowSize);
+    float SMA_GyroZ = arrayAverage(fGyroZ, windowSize);
 
     shiftArrayLeft(fMagX, windowSize);
     shiftArrayLeft(fMagY, windowSize);
@@ -242,9 +260,9 @@ void loop() {
     shiftArrayLeft(fAccY, windowSize);
     shiftArrayLeft(fAccZ, windowSize);
 
-    // shiftArrayLeft(fGyroX, windowSize);
-    // shiftArrayLeft(fGyroY, windowSize);
-    // shiftArrayLeft(fGyroZ, windowSize);
+    shiftArrayLeft(fGyroX, windowSize);
+    shiftArrayLeft(fGyroY, windowSize);
+    shiftArrayLeft(fGyroZ, windowSize);
 
     // Add new value to the end of the averaging array;
     fMagX[windowSize - 1] = MagX;
@@ -255,9 +273,9 @@ void loop() {
     fAccY[windowSize - 1] = AccY;
     fAccZ[windowSize - 1] = AccZ;
 
-    // fGyroX[windowSize - 1] = GyroX;
-    // fGyroY[windowSize - 1] = GyroY;
-    // fGyroZ[windowSize - 1] = GyroZ;
+    fGyroX[windowSize - 1] = GyroX;
+    fGyroY[windowSize - 1] = GyroY;
+    fGyroZ[windowSize - 1] = GyroZ;
 
     // =================== CALCULATING POSITION AND ORIENTATION =======================
     // ================================================================================
@@ -274,19 +292,22 @@ void loop() {
     SMA_posY += 0.5 * SMA_AccY * delTime * delTime + SMA_speedY * delTime ;
     SMA_posZ += 0.5 * SMA_AccZ * delTime * delTime + SMA_speedZ * delTime ;
 
-    if (initialRoll == -1 || initialPitch == -1 ) {
-      initialRoll = atan2(SMA_AccY, SMA_AccZ) * 180/M_PI;
-      initialPitch = atan2(-SMA_AccX, sqrt(SMA_AccY*SMA_AccY + SMA_AccZ*SMA_AccZ)) * 180/M_PI;          
+    if (Roll == -1 || Pitch == -1 ) {
+      Roll = atan2(SMA_AccY, SMA_AccZ) * 180/M_PI;
+      Pitch = atan2(-SMA_AccX, sqrt(SMA_AccY*SMA_AccY + SMA_AccZ*SMA_AccZ)) * 180/M_PI;          
     }
     else {
       Accel_Roll = atan2(SMA_AccY, SMA_AccZ) * 180/M_PI;
       Accel_Pitch = atan2(-SMA_AccX, sqrt(SMA_AccY*SMA_AccY + SMA_AccZ*SMA_AccZ)) * 180/M_PI;
-
-      Gyro_Roll += GyroX * delTime;
-      Gyro_Pitch += GyroY * delTime;
     }
     
+    // ======================= COMPLIMENTARY FILTER ======================
+
+    Roll = Accel_Roll * FILTERGAIN + (Roll + GyroX * delTime )* ( 1 - FILTERGAIN );
+    Pitch = Accel_Pitch * FILTERGAIN + (Pitch + GyroY * delTime )* ( 1 - FILTERGAIN );
+    
     prevTime = currentTime; 
+
 
 
     // ======================= LOGGING DATA ==============================
@@ -297,30 +318,37 @@ void loop() {
     // printVector (SMA_AccX, SMA_AccY, SMA_AccZ);
     // printVector (AccX, AccY, AccZ);
     // printVector (GyroX, GyroY, GyroZ);
+    // printVector (SMA_GyroX, SMA_GyroY, SMA_GyroZ);
     // Serial.print (Accel_Roll); Serial.print (","); Serial.println (Accel_Pitch);
-    Serial.print (Gyro_Roll); Serial.print (","); Serial.println (Gyro_Pitch);
+    // Serial.print (Gyro_Roll); Serial.print (","); Serial.println (Gyro_Pitch); // Gyroscope given orientation
+    Serial.print (Roll); Serial.print (","); Serial.println (Pitch); // Filtered Roll and Pitch angles
     // Serial.print (initialRoll); Serial.print (","); Serial.println (initialPitch);
 
     // printVector (xDistance, yDistance, 0);     
 
     // --- Noise Comparisons
-    // Serial.print(MagX);
-    // Serial.print(",");
-    // Serial.print(SMA_MagX);
-    // Serial.println("");
+    // Serial.print(MagX); Serial.print(","); Serial.println(SMA_MagX); // Magnetometer Noise
+    // Serial.print(AccZ); Serial.print(","); Serial.println(SMA_AccZ); // Accelerometer Noise
+    // Serial.print(GyroX); Serial.print(","); Serial.println(SMA_GyroX); // Gyro Noise
 
-    // Serial.print(AccZ);
-    // Serial.print(",");
-    // Serial.print(SMA_AccZ);
-    // Serial.println("");
-
-    //---- Sensor drift comparisons 
+    // ---- Sensor drift comparisons 
     // Serial.print (posZ); Serial.print (",");
     // Serial.print (SMA_posZ); Serial.print (",");
     // Serial.print (speedZ); Serial.print (",");
     // Serial.print (SMA_speedZ); Serial.print (",");
     // Serial.print(AccZ); Serial.print(",");
     // Serial.println(SMA_AccZ);
+
+  // if the file opened okay, write to it:
+  // if (myFile) {
+  //   // Write to file
+  //   myFile.print(SMA_AccX); myFile.print(","); myFile.print(SMA_AccY); myFile.print(","); myFile.println(SMA_AccZ);
+  // }
+  // // if the file didn't open, print an error:
+  // else {
+  //   Serial.println("error opening test.txt");
+  // }
+
   }
 
   delay (SAMPLE_INTERVAL);
@@ -362,4 +390,8 @@ void allocateArrays() {
   fAccX = new float[windowSize];
   fAccY = new float[windowSize];
   fAccZ = new float[windowSize];
+
+  fGyroX = new float[windowSize];
+  fGyroY = new float[windowSize];
+  fGyroZ = new float[windowSize];
 }
