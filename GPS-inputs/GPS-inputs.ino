@@ -61,7 +61,7 @@ void loop() {
       float speed = gps.speed.mps();
       int alt = gps.altitude.meters();
 
-      // printGPSInfo (lat, lng, speed, heading, alt);  
+      printGPSInfo (lat, lng, speed, heading, alt);  
       
       // If the reference coordinates have not been set, use the first GPS reading as the reference
       if (isnan(refLat) || isnan(refLng) ) {
@@ -100,7 +100,7 @@ void loop() {
     fxDist[windowSize - 1] = xDist;
     fyDist[windowSize - 1] = yDist;
 
-    Serial.print (SMA_xDist); Serial.print (","); Serial.println (SMA_yDist);
+    // Serial.print (SMA_xDist); Serial.print (","); Serial.println (SMA_yDist);
   }
 
   delay (100);

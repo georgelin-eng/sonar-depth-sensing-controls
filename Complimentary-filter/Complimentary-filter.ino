@@ -116,6 +116,7 @@ void setup() {
   Wire.write(0x1C);                  //Talk to the ACCEL_CONFIG register (1C hex)
   Wire.write(0x10);                  //Set the register bits as 00010000 (+/- 8g full scale range)
   Wire.endTransmission(true);
+  
   // Configure Gyro Sensitivity - Full Scale Range (default +/- 250deg/s)
   Wire.beginTransmission(MPU);
   Wire.write(0x1B);                   // Talk to the GYRO_CONFIG register (1B hex)
@@ -167,6 +168,7 @@ void loop() {
       delay (20);
     }
   }
+
 
   // =======================  ACCELEROMETER ================================== //
   // =========================================================================
@@ -302,6 +304,7 @@ void loop() {
     }
     
     // ======================= COMPLIMENTARY FILTER ======================
+    // ===================================================================
 
     Roll = Accel_Roll * FILTERGAIN + (Roll + GyroX * delTime )* ( 1 - FILTERGAIN );
     Pitch = Accel_Pitch * FILTERGAIN + (Pitch + GyroY * delTime )* ( 1 - FILTERGAIN );
@@ -353,6 +356,8 @@ void loop() {
 
   delay (SAMPLE_INTERVAL);
 }
+
+
 
 
 // ======================= FUNCTIONS BEGIN =========================
